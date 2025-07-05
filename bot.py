@@ -1,14 +1,21 @@
-from flask import Flask
-import threading
 import os
 import json
 import requests
 import base64
 import random
 import string
+import threading
 from datetime import datetime
+from flask import Flask
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    filters,
+    ContextTypes,
+    ConversationHandler,
+)
 
 # Load token from environment
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")  # Set this on Render
@@ -21,7 +28,7 @@ EXPORT_PATH = "exported_users.txt"
 # ====== States for conversation ======
 CHOOSING, ADDING = range(2)
 
-# ===== Helper functions (unchanged except print->bot.send_message or return string) =====
+# ===== Helper functions =====
 def generate_random_password(length=4):
     characters = string.ascii_letters + string.digits + string.punctuation
     return ''.join(random.choice(characters) for _ in range(length))
@@ -99,7 +106,10 @@ async def list_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def generate_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = generate_random_username()
     password = generate_random_password()
-    await update.message.reply_text(f"✅ *Generated Account:*\n👤 Username: `{username}`\n🔒 Password: `{password}`", parse_mode="Markdown")
+    await update.message.reply_text(
+        f"✅ *Generated Account:*\n👤 Username: `{username}`\n🔒 Password: `{password}`",
+        parse_mode="Markdown"
+    )
 
 async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     users = load_users()
@@ -181,8 +191,8 @@ async def export(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f.write("\n".join(lines))
     await update.message.reply_document(open(path, "rb"))
 
-# ===== Bot Init =====
-def main():
+# ===== Telegram Bot Init =====
+def run_bot():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -192,7 +202,6 @@ def main():
     app.add_handler(CommandHandler("remove", remove_user))
     app.add_handler(CommandHandler("export", export))
 
-    # Conversation for /add
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("add", add_user_start)],
         states={ADDING: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_user_process)]},
@@ -200,21 +209,20 @@ def main():
     )
     app.add_handler(conv_handler)
 
-    print("✅ Bot is running...")
+    print("✅ Bot is polling...")
     app.run_polling()
 
-if __name__ == "__main__":
-    main()
-
+# ===== Minimal Flask App to expose a port =====
 app_flask = Flask(__name__)
 
-@app_flask.route('/')
+@app_flask.route("/")
 def home():
-    return "Bot is running!"
+    return "✅ Bot is running!"
 
 def run_flask():
-    app_flask.run(host='0.0.0.0', port=10000)  # Render will detect this port
+    app_flask.run(host="0.0.0.0", port=10000)
 
+# ===== Run Both =====
 if __name__ == "__main__":
     threading.Thread(target=run_flask).start()
-    main()
+    run_bot()
