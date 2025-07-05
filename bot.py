@@ -1,3 +1,5 @@
+from flask import Flask
+import threading
 import os
 import json
 import requests
@@ -202,4 +204,17 @@ def main():
     app.run_polling()
 
 if __name__ == "__main__":
+    main()
+
+app_flask = Flask(__name__)
+
+@app_flask.route('/')
+def home():
+    return "Bot is running!"
+
+def run_flask():
+    app_flask.run(host='0.0.0.0', port=10000)  # Render will detect this port
+
+if __name__ == "__main__":
+    threading.Thread(target=run_flask).start()
     main()
